@@ -13,24 +13,41 @@ contract AMM {
         tokenB = IERC20(_tokenB);
     }
 
-    function swapAtoB(uint256 amountSwapped) external {
-        // transfer tokenA to this contract
-        tokenA.transferFrom(msg.sender, address(this), amountSwapped);
-        // calculate amount of token B to swap Ydx/(X+DX)
-        (uint256 amountA, uint256 amountB) = calculateInitialValues();
-        uint256 amountBtoReturn = calculateAmountToSwap(amountSwapped, amountA, amountB);
-        // transfer tokenB to msg.sender
-        tokenB.transfer(msg.sender, amountBtoReturn);
+    function selectWhichTokenIsSwapped(address token) internal view returns (address tokenOut) {
+        if (token == address(tokenA)) {
+            return (address(tokenB));
+        } else {
+            return (address(tokenA));
+        }
     }
 
-    function addLiquidity() external {
+    function swap(address tokenSwapped, uint256 amountSwapped) external {
+        address tokenToReturn = selectWhichTokenIsSwapped(tokenSwapped);
+
+        // transfer tokenA to this contract
+        // calculate amount of token B to swap Ydx/(X+DX)
+        (uint256 reserveOfTokenSwapped, uint256 reserveOfTokenReturned) = calculateInitialValues(tokenSwapped);
+        uint256 amounttoReturn = calculateAmountToSwap(amountSwapped, reserveOfTokenSwapped, reserveOfTokenReturned);
+        // transfer tokenB to msg.sender
+        IERC20(tokenSwapped).transferFrom(msg.sender, address(this), amountSwapped);
+        IERC20(tokenToReturn).transfer(msg.sender, amounttoReturn);
+    }
+
+    function addLiquidity(uint256 amountA, uint256 amountB) external {
+        // ensure proper ratio of X & Y are added
+
         // transfer token from msg.sender to address(this)
+        tokenB.transferFrom(msg.sender, address(this), amountB);
+        tokenA.transferFrom(msg.sender, address(this), amountA);
         // adjust totalLiquidity sqrt(XY)
     }
-    function removeLiquidity() external {
+
+    function removeLiquidity(uint256 amount, address token) external {
         // transfer token from address(this) to msg.sender
+        IERC20(token).transfer(msg.sender, amount);
         // adjust totalLiquidity sqrt(XY)
     }
+
     function sqrt() internal pure {}
     function calculatetotalLiquidity() public {}
 
@@ -47,9 +64,17 @@ contract AMM {
     }
     // function to return amount of tokenA and tokenB in contract
 
-    function calculateInitialValues() public view returns (uint256 amountA, uint256 amountB) {
-        amountA = tokenA.balanceOf(address(this));
-        amountB = tokenB.balanceOf(address(this));
-        return (amountA, amountB);
+    function calculateInitialValues(address tokenSwapped)
+        public
+        view
+        returns (uint256 reserveOfSwappedToken, uint256 reserveOfReturnedToken)
+    {
+        uint256 amountA = tokenA.balanceOf(address(this));
+        uint256 amountB = tokenB.balanceOf(address(this));
+        if (tokenSwapped == address(tokenA)) {
+            return (amountA, amountB);
+        } else {
+            return (amountB, amountA);
+        }
     }
 }
