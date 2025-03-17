@@ -4,7 +4,12 @@ pragma solidity ^0.8.18;
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 contract AMM {
+    error AMM__IncorrectRatioProvided();
+    error AMM__sharesExceedBalance();
+
+    mapping(address shareholder => uint256 amountofshare) private s_balances;
     uint256 totalLiquidity;
+    uint256 shareCount;
     IERC20 tokenA;
     IERC20 tokenB;
 
@@ -34,22 +39,64 @@ contract AMM {
     }
 
     function addLiquidity(uint256 amountA, uint256 amountB) external {
+        (uint256 reserveOfTokenA, uint256 reserveOfTokenB) = calculateInitialValues(address(tokenA));
         // ensure proper ratio of X & Y are added
-
+        if (amountA * reserveOfTokenB != reserveOfTokenA * amountB) {
+            revert AMM__IncorrectRatioProvided();
+        }
+        // calcuate shares to mint
+        uint256 initialShares = getInitialShares();
+        uint256 sharesToMint = (amountA * initialShares) / reserveOfTokenA;
+        // mint & transfer shares
+        s_balances[msg.sender] += sharesToMint;
+        shareCount += sharesToMint;
         // transfer token from msg.sender to address(this)
         tokenB.transferFrom(msg.sender, address(this), amountB);
         tokenA.transferFrom(msg.sender, address(this), amountA);
+
         // adjust totalLiquidity sqrt(XY)
+        uint256 finalLiquidity = updateorGetLiquidity();
     }
 
-    function removeLiquidity(uint256 amount, address token) external {
+    function removeLiquidity(uint256 amountShares) external {
+        if (s_balances[msg.sender] < amountShares) {
+            revert AMM__sharesExceedBalance();
+        }
+        // calculate amount of token to return
+        uint256 initialshares = getInitialShares();
+        (uint256 amountA, uint256 amountB) = calculateInitialValues(address(tokenA));
+        (uint256 dx, uint256 dy) = ((amountA * amountShares) / initialshares, (amountB * amountShares) / initialshares);
         // transfer token from address(this) to msg.sender
-        IERC20(token).transfer(msg.sender, amount);
+        tokenA.transfer(msg.sender, dx);
+        tokenB.transfer(msg.sender, dy);
+        // remove shares
+        s_balances[msg.sender] -= amountShares;
         // adjust totalLiquidity sqrt(XY)
+        uint256 finalLiquidity = updateorGetLiquidity();
     }
 
-    function sqrt() internal pure {}
-    function calculatetotalLiquidity() public {}
+    // babylonian square root method
+    function sqrt(uint256 x) internal pure returns (uint256) {
+        if (x == 0) return 0;
+
+        uint256 z = (x + 1) / 2;
+        uint256 y = x;
+
+        while (z < y) {
+            y = z;
+            z = (x / z + z) / 2;
+        }
+
+        return y;
+    }
+
+    function updateorGetLiquidity() public returns (uint256) {
+        (uint256 amountA, uint256 amountB) = calculateInitialValues(address(tokenA));
+        uint256 product = amountA * amountB;
+        uint256 liquidity = sqrt(product);
+        totalLiquidity = liquidity;
+        return totalLiquidity;
+    }
 
     function calculateAmountToSwap(
         uint256 amountswapped,
@@ -76,5 +123,9 @@ contract AMM {
         } else {
             return (amountB, amountA);
         }
+    }
+
+    function getInitialShares() internal view returns (uint256) {
+        return shareCount;
     }
 }
