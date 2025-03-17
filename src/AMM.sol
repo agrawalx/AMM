@@ -2,10 +2,13 @@
 pragma solidity ^0.8.18;
 
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {ReentrancyGuard} from "../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 
-contract AMM {
+contract AMM is ReentrancyGuard {
     error AMM__IncorrectRatioProvided();
     error AMM__sharesExceedBalance();
+    error AMM__mustBeMoreThanZero();
+    error AMM__alreadyContainsLiquidity();
 
     mapping(address shareholder => uint256 amountofshare) private s_balances;
     uint256 totalLiquidity;
@@ -18,6 +21,32 @@ contract AMM {
         tokenB = IERC20(_tokenB);
     }
 
+    modifier moreThanZero(uint256 amount) {
+        if (amount == 0) {
+            revert AMM__mustBeMoreThanZero();
+        }
+        _;
+    }
+
+    function initialLiquidity(uint256 amountA, uint256 amountB)
+        public
+        moreThanZero(amountA)
+        moreThanZero(amountB)
+        nonReentrant
+        returns (uint256 initialShares)
+    {
+        (uint256 reserveOfTokenA, uint256 reserveOfTokenB) = calculateInitialValues(address(tokenA));
+        if (reserveOfTokenA != 0 || reserveOfTokenB != 0) {
+            revert AMM__alreadyContainsLiquidity();
+        }
+        shareCount = sqrt(amountA * amountB);
+        s_balances[msg.sender] += shareCount;
+
+        tokenA.transferFrom(msg.sender, address(this), amountA);
+        tokenB.transferFrom(msg.sender, address(this), amountB);
+        uint256 initialLiquidity = updateorGetLiquidity();
+    }
+
     function selectWhichTokenIsSwapped(address token) internal view returns (address tokenOut) {
         if (token == address(tokenA)) {
             return (address(tokenB));
@@ -26,7 +55,7 @@ contract AMM {
         }
     }
 
-    function swap(address tokenSwapped, uint256 amountSwapped) external {
+    function swap(address tokenSwapped, uint256 amountSwapped) external nonReentrant moreThanZero(amountSwapped) {
         address tokenToReturn = selectWhichTokenIsSwapped(tokenSwapped);
 
         // transfer tokenA to this contract
@@ -38,7 +67,12 @@ contract AMM {
         IERC20(tokenToReturn).transfer(msg.sender, amounttoReturn);
     }
 
-    function addLiquidity(uint256 amountA, uint256 amountB) external {
+    function addLiquidity(uint256 amountA, uint256 amountB)
+        external
+        moreThanZero(amountA)
+        moreThanZero(amountB)
+        nonReentrant
+    {
         (uint256 reserveOfTokenA, uint256 reserveOfTokenB) = calculateInitialValues(address(tokenA));
         // ensure proper ratio of X & Y are added
         if (amountA * reserveOfTokenB != reserveOfTokenA * amountB) {
@@ -58,7 +92,7 @@ contract AMM {
         uint256 finalLiquidity = updateorGetLiquidity();
     }
 
-    function removeLiquidity(uint256 amountShares) external {
+    function removeLiquidity(uint256 amountShares) external moreThanZero(amountShares) nonReentrant {
         if (s_balances[msg.sender] < amountShares) {
             revert AMM__sharesExceedBalance();
         }
@@ -127,5 +161,9 @@ contract AMM {
 
     function getInitialShares() internal view returns (uint256) {
         return shareCount;
+    }
+
+    function getShareHolding(address shareHolder) external view returns (uint256) {
+        return s_balances[shareHolder];
     }
 }
