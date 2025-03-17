@@ -9,6 +9,7 @@ contract AMM is ReentrancyGuard {
     error AMM__sharesExceedBalance();
     error AMM__mustBeMoreThanZero();
     error AMM__alreadyContainsLiquidity();
+    error AMM__NotValidToken();
 
     mapping(address shareholder => uint256 amountofshare) private s_balances;
     uint256 totalLiquidity;
@@ -24,6 +25,13 @@ contract AMM is ReentrancyGuard {
     modifier moreThanZero(uint256 amount) {
         if (amount == 0) {
             revert AMM__mustBeMoreThanZero();
+        }
+        _;
+    }
+
+    modifier ValidToken(address token) {
+        if (token != address(tokenA) && token != address(tokenB)) {
+            revert AMM__NotValidToken();
         }
         _;
     }
@@ -54,7 +62,12 @@ contract AMM is ReentrancyGuard {
         }
     }
 
-    function swap(address tokenSwapped, uint256 amountSwapped) external nonReentrant moreThanZero(amountSwapped) {
+    function swap(address tokenSwapped, uint256 amountSwapped)
+        external
+        nonReentrant
+        moreThanZero(amountSwapped)
+        ValidToken(tokenSwapped)
+    {
         address tokenToReturn = selectWhichTokenIsSwapped(tokenSwapped);
 
         // transfer tokenA to this contract
