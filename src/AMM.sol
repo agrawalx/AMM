@@ -11,7 +11,7 @@ contract AMM is ReentrancyGuard {
     error AMM__alreadyContainsLiquidity();
     error AMM__NotValidToken();
 
-    mapping(address shareholder => uint256 amountofshare) private s_balances;
+    mapping(address shareholder => uint256 amountofshare) public s_balances;
     uint256 totalLiquidity;
     uint256 shareCount;
     IERC20 tokenA;
@@ -171,7 +171,7 @@ contract AMM is ReentrancyGuard {
         }
     }
 
-    function getInitialShares() internal view returns (uint256) {
+    function getInitialShares() public view returns (uint256) {
         return shareCount;
     }
 
