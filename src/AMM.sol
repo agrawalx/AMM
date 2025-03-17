@@ -33,7 +33,6 @@ contract AMM is ReentrancyGuard {
         moreThanZero(amountA)
         moreThanZero(amountB)
         nonReentrant
-        returns (uint256 initialShares)
     {
         (uint256 reserveOfTokenA, uint256 reserveOfTokenB) = calculateInitialValues(address(tokenA));
         if (reserveOfTokenA != 0 || reserveOfTokenB != 0) {
