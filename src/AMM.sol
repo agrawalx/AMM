@@ -122,7 +122,7 @@ contract AMM is ReentrancyGuard {
     }
 
     // babylonian square root method
-    function sqrt(uint256 x) internal pure returns (uint256) {
+    function sqrt(uint256 x) public pure returns (uint256) {
         if (x == 0) return 0;
 
         uint256 z = (x + 1) / 2;

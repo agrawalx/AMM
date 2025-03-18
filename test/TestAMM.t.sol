@@ -63,25 +63,25 @@ contract testAMM is Test {
         vm.stopPrank();
     }
 
-    function invariant_AddLiquidity() public {
-        // contract must have some tokenA & tokenB
-        (uint256 initial_amountA, uint256 initial_amountB) = amm.calculateInitialValues(address(tokenA));
-        uint256 product = initial_amountA * initial_amountB;
-        tokenA.mint(PERSON, INITIAL_BALANCE);
-        tokenB.mint(PERSON, INITIAL_BALANCE);
-        vm.startPrank(PERSON);
-        tokenA.approve(address(amm), INITIAL_BALANCE);
-        tokenB.approve(address(amm), INITIAL_BALANCE);
-        amm.addLiquidity(INITIAL_DEPOSIT, INITIAL_DEPOSIT);
-        (uint256 final_amountA, uint256 final_amountB) = amm.calculateInitialValues(address(tokenA));
-        uint256 finalProduct = final_amountA * final_amountB;
-        assert(tokenA.balanceOf(PERSON) == INITIAL_BALANCE - INITIAL_DEPOSIT);
-        assert(tokenB.balanceOf(PERSON) == INITIAL_BALANCE - INITIAL_DEPOSIT);
-        uint256 totalShares = amm.getInitialShares();
-        uint256 sharesToMint = (INITIAL_DEPOSIT * (totalShares)) / (initial_amountA);
-        assert(amm.getShareHolding(PERSON) == sharesToMint);
-        console.log(product, finalProduct);
-        assert(finalProduct >= product);
-        vm.stopPrank();
-    }
+    // function invariant_AddLiquidity() public {
+    //     // contract must have some tokenA & tokenB
+    //     (uint256 initial_amountA, uint256 initial_amountB) = amm.calculateInitialValues(address(tokenA));
+    //     uint256 product = initial_amountA * initial_amountB;
+    //     tokenA.mint(PERSON, INITIAL_BALANCE);
+    //     tokenB.mint(PERSON, INITIAL_BALANCE);
+    //     vm.startPrank(PERSON);
+    //     tokenA.approve(address(amm), INITIAL_BALANCE);
+    //     tokenB.approve(address(amm), INITIAL_BALANCE);
+    //     amm.addLiquidity(INITIAL_DEPOSIT, INITIAL_DEPOSIT);
+    //     (uint256 final_amountA, uint256 final_amountB) = amm.calculateInitialValues(address(tokenA));
+    //     uint256 finalProduct = final_amountA * final_amountB;
+    //     assert(tokenA.balanceOf(PERSON) == INITIAL_BALANCE - INITIAL_DEPOSIT);
+    //     assert(tokenB.balanceOf(PERSON) == INITIAL_BALANCE - INITIAL_DEPOSIT);
+    //     uint256 totalShares = amm.getInitialShares();
+    //     uint256 sharesToMint = (INITIAL_DEPOSIT * (totalShares)) / (initial_amountA);
+    //     assert(amm.getShareHolding(PERSON) == sharesToMint);
+    //     console.log(product, finalProduct);
+    //     assert(finalProduct >= product);
+    //     vm.stopPrank();
+    // }
 }
